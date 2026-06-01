@@ -13,4 +13,22 @@ library(ggplot2)
 library(janitor)
 
 no_choice_raw <- read_csv("data/no_choice_raw.csv")
+
+no_choice <- clean_names(no_choice_raw)
+```
+
+```{r}
+no_choice |>
+  ggplot(aes(y = amount_eaten, color = treatment)) +
+  geom_boxplot() +
+  theme_minimal()
+```
+
+```{r}
+
+anova_model <- aov(amount_eaten ~ treatment, data = no_choice)
+summary(anova_model)
+
+TukeyHSD(anova_model)
+
 ```
