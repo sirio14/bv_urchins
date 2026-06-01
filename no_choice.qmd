@@ -1,0 +1,16 @@
+---
+title: "Urchin_Practice"
+format: html
+editor: visual
+---
+
+## No-Choice Feeding Trials
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(janitor)
+
+no_choice_raw <- read_csv("data/no_choice_raw.csv")
+```
