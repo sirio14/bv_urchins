@@ -21,6 +21,14 @@ no_choice <- clean_names(no_choice_raw)
 no_choice |>
   ggplot(aes(y = amount_eaten, color = treatment)) +
   geom_boxplot() +
+  labs(
+    y = "Amount Consumed (g)"
+  ) +
+  scale_color_manual(values = c(
+    detrital = "#354230",
+    halodule = "#006600",
+    zostera = "#9ACD23"
+  )) + 
   theme_minimal()
 ```
 
@@ -31,4 +39,11 @@ summary(anova_model)
 
 TukeyHSD(anova_model)
 
+```
+
+```{r}
+
+choice_raw <- read_csv("data/choice_trials_raw.csv")
+
+choice_data <- clean_names(choice_raw)
 ```
