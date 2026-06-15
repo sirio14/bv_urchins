@@ -47,3 +47,89 @@ choice_raw <- read_csv("data/choice_trials_raw.csv")
 
 choice_data <- clean_names(choice_raw)
 ```
+
+```{r}
+
+choice_data <- choice_data |>
+  mutate(pair = paste(choice_a, "vs", choice_b))
+
+```
+
+```{r}
+choice_data |>
+  pivot_longer(cols = c(a_amount_eaten, b_amount_eaten),
+               names_to = "species_slot",
+               values_to = "amount_eaten") |>
+  mutate(species = ifelse(species_slot == "a_amount_eaten", choice_a, choice_b)) |>
+  group_by(pair, species) |>
+  summarise(mean = mean(amount_eaten, na.rm = T),
+            se   = sd(amount_eaten, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  ggplot(aes(x = species, y = mean, fill = species)) +
+    geom_col(color = "black", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+    facet_wrap(~ pair) +
+    labs(y = "Amount eaten (mg)", x = NULL) +
+    theme_classic()
+```
+
+```{r}
+choice_data |>
+  group_by(pair) |>
+  summarise(p_value = t.test(a_amount_eaten, b_amount_eaten, paired = TRUE)$p.value,
+            .groups = "drop")
+```
+
+```{r}
+choice_data |>
+  mutate(total = a_amount_eaten + b_amount_eaten,
+         a_pct = 100 * a_amount_eaten / total,
+         b_pct = 100 * b_amount_eaten / total) |>
+  group_by(pair) |>
+  summarise(p_value = t.test(a_pct, b_pct, paired = TRUE)$p.value,
+            .groups = "drop")
+```
+
+```{r}
+choice_data |>
+  mutate(total = a_amount_eaten + b_amount_eaten,
+         a_pct = 100 * a_amount_eaten / total,
+         b_pct = 100 * b_amount_eaten / total) |>
+  pivot_longer(cols = c(a_pct, b_pct),
+               names_to = "species_slot",
+               values_to = "pct_eaten") |>
+  mutate(species = ifelse(species_slot == "a_pct", choice_a, choice_b)) |>
+  ggplot(aes(x = species, y = pct_eaten)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.1, color = "red") +
+    facet_wrap(~ pair) +
+    theme_classic()
+```
+
+```{r}
+choice_data |>
+  filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
+  mutate(total = a_amount_eaten + b_amount_eaten,
+         a_pct = 100 * a_amount_eaten / total,
+         b_pct = 100 * b_amount_eaten / total) |>
+  pivot_longer(cols = c(a_pct, b_pct),
+               names_to = "species_slot",
+               values_to = "pct_eaten") |>
+  mutate(species = ifelse(species_slot == "a_pct", choice_a, choice_b)) |>
+  ggplot(aes(x = species, y = pct_eaten)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.1, color = "red") +
+    facet_wrap(~ pair) +
+    theme_classic()
+```
+
+```{r}
+choice_data |>
+  filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
+  mutate(total = a_amount_eaten + b_amount_eaten,
+         a_pct = 100 * a_amount_eaten / total) |>
+  group_by(pair) |>
+  summarise(p_value = t.test(a_pct, mu = 50)$p.value,
+            mean_pct_a = mean(a_pct),
+            .groups = "drop")
+```
