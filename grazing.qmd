@@ -96,6 +96,34 @@ grazing_change_shoots |>
 ```{r}
 grazing_change_shoots |>
   mutate(total_change = change_zostera + change_halodule) |>
+  group_by(treatment) |>
+  summarise(total = mean(total_change, na.rm = T),
+            .groups = "drop") |>
+  mutate(label = c("", "", "**", "***")) |>
+  left_join(
+    grazing_change_shoots |>
+      pivot_longer(cols = c(change_zostera, change_halodule),
+                   names_to = "species", values_to = "change") |>
+      mutate(species = ifelse(species == "change_zostera", "zostera", "halodule")) |>
+      group_by(treatment, species) |>
+      summarise(mean = mean(change, na.rm = T), .groups = "drop"),
+    by = "treatment"
+  ) |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(color = "black", width = 0.6) +
+    geom_text(aes(y = total + 5, label = label), size = 6) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
+  scale_fill_manual(values = c(
+    halodule = "#006600",
+    zostera = "#9ACD23"
+    )) + 
+    theme_classic()
+```
+
+```{r}
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
   arrange(treatment, total_change)
 ```
 
@@ -112,6 +140,14 @@ grazing_change_shoots |>
     geom_hline(yintercept = 0, linetype = "dashed") +
     labs(x = "Number of urchins", y = "Change in total shoot density") +
     theme_classic()
+```
+
+```{r}
+data.frame(
+  Comparison   = c("1 vs 0", "2 vs 0", "4 vs 0", "2 vs 1", "4 vs 1", "4 vs 2"),
+  P_value      = c(0.9939, 0.0077, 0.0005, 0.0142, 0.0011, 0.8665),
+  Significance = c("ns", "**", "***", "*", "**", "ns")
+)
 ```
 
 ```{r}
