@@ -19,17 +19,19 @@ no_choice <- clean_names(no_choice_raw)
 
 ```{r}
 no_choice |>
-  ggplot(aes(y = amount_eaten, color = treatment)) +
+  ggplot(aes(x = treatment, y = amount_eaten, color = treatment)) +
   geom_boxplot() +
   labs(
-    y = "Amount Consumed (g)"
+    y = "Amount Consumed (g)",
+    x = NULL
   ) +
   scale_color_manual(values = c(
     detrital = "#354230",
     halodule = "#006600",
     zostera = "#9ACD23"
-  )) + 
-  theme_minimal()
+  )) +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 ```{r}
@@ -38,6 +40,23 @@ anova_model <- aov(amount_eaten ~ treatment, data = no_choice)
 summary(anova_model)
 
 TukeyHSD(anova_model)
+
+list(
+  ANOVA = data.frame(
+    Source    = c("treatment", "Residuals"),
+    Df        = c(2, 33),
+    Sum_Sq    = c(5.56, 20.71),
+    Mean_Sq   = c(2.78, 0.63),
+    F_value   = c(4.429, NA),
+    P_value   = c(0.0198, NA)
+  ),
+  Tukey = data.frame(
+    Comparison   = c("halodule vs detrital", "zostera vs detrital", "zostera vs halodule"),
+    Diff         = c(-0.7717, -0.8842, -0.1125),
+    P_value      = c(0.0580, 0.0263, 0.9356),
+    Significance = c("ns", "*", "ns")
+  )
+)
 
 ```
 
@@ -68,9 +87,15 @@ choice_data |>
   ggplot(aes(x = species, y = mean, fill = species)) +
     geom_col(color = "black", width = 0.6) +
     geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
-    facet_wrap(~ pair) +
+    facet_wrap(~ pair, scales = "free_x") +
     labs(y = "Amount eaten (mg)", x = NULL) +
-    theme_classic()
+    scale_fill_manual(values = c(
+      detrital = "#354230",
+      halodule = "#006600",
+      zostera = "#9ACD23"
+    )) +
+    theme_classic() +
+    theme(panel.spacing = unit(2, "lines"))
 ```
 
 ```{r}
@@ -92,22 +117,6 @@ choice_data |>
 
 ```{r}
 choice_data |>
-  mutate(total = a_amount_eaten + b_amount_eaten,
-         a_pct = 100 * a_amount_eaten / total,
-         b_pct = 100 * b_amount_eaten / total) |>
-  pivot_longer(cols = c(a_pct, b_pct),
-               names_to = "species_slot",
-               values_to = "pct_eaten") |>
-  mutate(species = ifelse(species_slot == "a_pct", choice_a, choice_b)) |>
-  ggplot(aes(x = species, y = pct_eaten)) +
-    geom_boxplot() +
-    geom_jitter(width = 0.1, color = "red") +
-    facet_wrap(~ pair) +
-    theme_classic()
-```
-
-```{r}
-choice_data |>
   filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
   mutate(total = a_amount_eaten + b_amount_eaten,
          a_pct = 100 * a_amount_eaten / total,
@@ -116,20 +125,37 @@ choice_data |>
                names_to = "species_slot",
                values_to = "pct_eaten") |>
   mutate(species = ifelse(species_slot == "a_pct", choice_a, choice_b)) |>
-  ggplot(aes(x = species, y = pct_eaten)) +
-    geom_boxplot() +
-    geom_jitter(width = 0.1, color = "red") +
-    facet_wrap(~ pair) +
-    theme_classic()
+  group_by(pair, species) |>
+  summarise(mean = mean(pct_eaten, na.rm = T),
+            se   = sd(pct_eaten, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  ggplot(aes(x = species, y = mean, fill = species)) +
+    geom_col(color = "black", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+    facet_wrap(~ pair, scales = "free_x") +
+    labs(y = "Percent eaten (%)", x = NULL) +
+    scale_fill_manual(values = c(
+      detrital = "#354230",
+      halodule = "#006600",
+      zostera = "#9ACD23"
+    )) +
+    theme_classic() +
+     theme(panel.spacing = unit(2, "lines"))
 ```
 
 ```{r}
 choice_data |>
   filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
   mutate(total = a_amount_eaten + b_amount_eaten,
-         a_pct = 100 * a_amount_eaten / total) |>
+         a_pct = 100 * a_amount_eaten / total,
+         b_pct = 100 * b_amount_eaten / total) |>
   group_by(pair) |>
-  summarise(p_value = t.test(a_pct, mu = 50)$p.value,
-            mean_pct_a = mean(a_pct),
-            .groups = "drop")
+  summarise(p_value = t.test(a_pct, b_pct, paired = TRUE)$p.value,
+            .groups = "drop") |>
+  mutate(significance = case_when(
+    p_value < 0.001 ~ "***",
+    p_value < 0.01  ~ "**",
+    p_value < 0.05  ~ "*",
+    TRUE            ~ "ns"
+  ))
 ```
