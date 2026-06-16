@@ -1,0 +1,127 @@
+---
+title: "Field Grazing Urchins"
+format: html
+editor: visual
+---
+
+## Field Grazing Trials
+
+```{r}
+grazing_data_raw <- read_csv("data/grazing_data_raw.csv")
+```
+
+```{r}
+grazing_data <- grazing_data_raw |>
+  mutate(date = as.Date(date, format = "%d%B%Y"))
+```
+
+```{r}
+
+grazing_change <- grazing_data |>
+  mutate(date = as.Date(date, format = "%d%B%Y")) |>
+  group_by(plot) |>
+  summarise(
+    treatment        = first(treatment),
+    change_zostera   = last(percent_zostera) - first(percent_zostera),
+    change_halodule  = last(percent_halodule) - first(percent_halodule),
+    .groups = "drop"
+  )
+
+```
+
+```{r}
+grazing_change |>
+  group_by(treatment) |>
+  summarise(
+    mean_zostera  = mean(change_zostera, na.rm = T),
+    se_zostera    = sd(change_zostera, na.rm = T) / sqrt(n()),
+    mean_halodule = mean(change_halodule, na.rm = T),
+    se_halodule   = sd(change_halodule, na.rm = T) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = -treatment,
+               names_to = c(".value", "species"),
+               names_pattern = "(.+)_(.+)") |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(position = "dodge", color = "black", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
+                  position = position_dodge(0.6), width = 0.2) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(x = "Number of urchins", y = "Change in percent cover (%)",
+         fill = "Species") +
+    theme_classic()
+```
+
+```{r}
+grazing_change_shoots <- grazing_data_raw |>
+  mutate(date = as.Date(date, format = "%d%B%Y")) |>
+  group_by(plot) |>
+  summarise(
+    treatment       = first(treatment),
+    change_zostera  = last(z_shoot_density) - first(z_shoot_density),
+    change_halodule = last(h_shoot_density) - first(h_shoot_density),
+    .groups = "drop"
+  )
+
+grazing_change_shoots |>
+  group_by(treatment) |>
+  summarise(
+    mean_zostera  = mean(change_zostera, na.rm = T),
+    se_zostera    = sd(change_zostera, na.rm = T) / sqrt(n()),
+    mean_halodule = mean(change_halodule, na.rm = T),
+    se_halodule   = sd(change_halodule, na.rm = T) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = -treatment,
+               names_to = c(".value", "species"),
+               names_pattern = "(.+)_(.+)") |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(position = "dodge", color = "black", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
+                  position = position_dodge(0.6), width = 0.2) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
+    theme_classic()
+```
+
+```{r}
+grazing_data|>
+  mutate(date = as.Date(date, format = "%d%B%Y")) |>
+  filter(date == as.Date("2026-06-10")) |>
+  group_by(treatment) |>
+  summarise(
+    mean_zostera  = mean(z_shoot_density, na.rm = T),
+    se_zostera    = sd(z_shoot_density, na.rm = T) / sqrt(n()),
+    mean_halodule = mean(h_shoot_density, na.rm = T),
+    se_halodule   = sd(h_shoot_density, na.rm = T) / sqrt(n()),
+    .groups = "drop"
+  ) |>
+  pivot_longer(cols = -treatment,
+               names_to = c(".value", "species"),
+               names_pattern = "(.+)_(.+)") |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(position = "dodge", color = "black", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se),
+                  position = position_dodge(0.6), width = 0.2) +
+    labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
+    scale_fill_manual(values = c(
+    halodule = "#006600",
+    zostera = "#9ACD23"
+    )) + 
+    theme_classic()
+```
+
+```{r}
+
+june10 <- grazing_data |>
+  mutate(date = as.Date(date, format = "%d%B%Y")) |>
+  filter(date == as.Date("2026-06-10"))
+
+summary(aov(z_shoot_density ~ factor(treatment), data = june10))
+summary(aov(h_shoot_density ~ factor(treatment), data = june10))
+```
+
+```{r}
+
+TukeyHSD(aov(h_shoot_density ~ factor(treatment), data = june10))
+```

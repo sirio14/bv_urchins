@@ -4,7 +4,7 @@ format: html
 editor: visual
 ---
 
-## No-Choice Feeding Trials
+## Lab Feeding Trials
 
 ```{r}
 library(tidyverse)
