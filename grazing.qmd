@@ -53,15 +53,20 @@ grazing_change |>
 ```
 
 ```{r}
+
+
 grazing_change_shoots <- grazing_data_raw |>
   mutate(date = as.Date(date, format = "%d%B%Y")) |>
   group_by(plot) |>
+  arrange(date) |>
   summarise(
     treatment       = first(treatment),
     change_zostera  = last(z_shoot_density) - first(z_shoot_density),
     change_halodule = last(h_shoot_density) - first(h_shoot_density),
     .groups = "drop"
   )
+
+grazing_change_shoots
 
 grazing_change_shoots |>
   group_by(treatment) |>
@@ -81,7 +86,42 @@ grazing_change_shoots |>
                   position = position_dodge(0.6), width = 0.2) +
     geom_hline(yintercept = 0, linetype = "dashed") +
     labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
+   scale_fill_manual(values = c(
+    halodule = "#006600",
+    zostera = "#9ACD23"
+    )) + 
     theme_classic()
+```
+
+```{r}
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
+  arrange(treatment, total_change)
+```
+
+```{r}
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
+  group_by(treatment) |>
+  summarise(mean = mean(total_change, na.rm = T),
+            se   = sd(total_change, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  ggplot(aes(x = factor(treatment), y = mean)) +
+    geom_col(color = "black", fill = "grey70", width = 0.6) +
+    geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(x = "Number of urchins", y = "Change in total shoot density") +
+    theme_classic()
+```
+
+```{r}
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
+  (\(d) summary(aov(total_change ~ factor(treatment), data = d)))()
+
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
+  (\(d) TukeyHSD(aov(total_change ~ factor(treatment), data = d)))()
 ```
 
 ```{r}
@@ -124,4 +164,69 @@ summary(aov(h_shoot_density ~ factor(treatment), data = june10))
 ```{r}
 
 TukeyHSD(aov(h_shoot_density ~ factor(treatment), data = june10))
+```
+
+```{r}
+june10 |>
+  pivot_longer(cols = c(z_shoot_density, h_shoot_density),
+               names_to = "species",
+               values_to = "shoot_density") |>
+  mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
+  group_by(treatment, species) |>
+  summarise(mean = mean(shoot_density, na.rm = T), .groups = "drop") |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(color = "black", width = 0.6) +
+    labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
+   scale_fill_manual(values = c(
+    halodule = "#006600",
+    zostera = "#9ACD23"
+    )) + 
+    theme_classic()
+```
+
+```{r}
+june10 |>
+  mutate(total_shoots = z_shoot_density + h_shoot_density) |>
+  (\(d) summary(aov(total_shoots ~ factor(treatment), data = d)))()
+```
+
+```{r}
+june10 |>
+  mutate(total_shoots = z_shoot_density + h_shoot_density) |>
+  (\(d) TukeyHSD(aov(total_shoots ~ factor(treatment), data = d)))()
+```
+
+```{r}
+june10 |>
+  mutate(total_shoots = z_shoot_density + h_shoot_density) |>
+  group_by(treatment) |>
+  summarise(total = mean(total_shoots, na.rm = T), .groups = "drop") |>
+  mutate(label = c("", "", "**", "***")) |>
+  left_join(
+    june10 |>
+      pivot_longer(cols = c(z_shoot_density, h_shoot_density),
+                   names_to = "species", values_to = "shoot_density") |>
+      mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
+      group_by(treatment, species) |>
+      summarise(mean = mean(shoot_density, na.rm = T), .groups = "drop"),
+    by = "treatment"
+  ) |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+    geom_col(color = "black", width = 0.6) +
+    geom_text(aes(y = total + 5, label = label), size = 6) +
+    labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
+  scale_fill_manual(values = c(
+    halodule = "#006600",
+    zostera = "#9ACD23"
+    )) + 
+    theme_classic()
+
+```
+
+```{r}
+data.frame(
+  comparison = c("1 vs 0", "2 vs 0", "4 vs 0", "2 vs 1", "4 vs 1", "4 vs 2"),
+  p_value    = c(0.4369, 0.0006, 0.00005, 0.0264, 0.0031, 0.9183),
+  sig        = c("ns", "**", "***", "*", "**", "ns")
+)
 ```
