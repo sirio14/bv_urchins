@@ -19,13 +19,13 @@ no_choice <- clean_names(no_choice_raw)
 
 ```{r}
 no_choice |>
-  ggplot(aes(x = treatment, y = amount_eaten, color = treatment)) +
-  geom_boxplot() +
+  ggplot(aes(x = treatment, y = amount_eaten, fill = treatment)) +
+  geom_boxplot(alpha = 0.75) +
   labs(
     y = "Amount Consumed (g)",
     x = NULL
   ) +
-  scale_color_manual(values = c(
+  scale_fill_manual(values = c(
     detrital = "#354230",
     halodule = "#006600",
     zostera = "#9ACD23"
@@ -166,5 +166,51 @@ choice_data |>
   ))
 ```
 
-```{}
+```{r}
+# non-adjusted values
+
+choice_data |>
+  mutate(
+    a_amount_eaten = a_before - a_after,
+    b_amount_eaten = b_before - b_after
+  ) |>
+  mutate(pair = paste(choice_a, "vs", choice_b)) |>
+  pivot_longer(cols = c(a_amount_eaten, b_amount_eaten),
+               names_to = "species_slot",
+               values_to = "amount_eaten") |>
+  mutate(species = ifelse(species_slot == "a_amount_eaten", choice_a, choice_b)) |>
+  group_by(pair, species) |>
+  summarise(mean = mean(amount_eaten, na.rm = T),
+            se   = sd(amount_eaten, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+ggplot(aes(x = species, y = mean, fill = species)) +
+  geom_col(color = "black", width = 0.6) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  facet_wrap(~ pair, scales = "free_x") +
+  labs(y = "Amount eaten (mg)", x = NULL) +
+  scale_fill_manual(values = c(
+    detrital = "#354230",
+    halodule = "#006600",
+    zostera  = "#9ACD23"
+  )) +
+  theme_classic() +
+  theme(panel.spacing = unit(2, "lines"))
+```
+
+```{r}
+
+# detrital vs halodule
+dvh <- choice_data |> filter(choice_a == "detrital", choice_b == "halodule") |>
+  mutate(a_eaten = a_before - a_after, b_eaten = b_before - b_after)
+t.test(dvh$a_eaten, dvh$b_eaten, paired = TRUE)
+
+# detrital vs zostera
+dvz <- choice_data |> filter(choice_a == "detrital", choice_b == "zostera") |>
+  mutate(a_eaten = a_before - a_after, b_eaten = b_before - b_after)
+t.test(dvz$a_eaten, dvz$b_eaten, paired = TRUE)
+
+# zostera vs halodule
+zvh <- choice_data |> filter(choice_a == "zostera", choice_b == "halodule") |>
+  mutate(a_eaten = a_before - a_after, b_eaten = b_before - b_after)
+t.test(zvh$a_eaten, zvh$b_eaten, paired = TRUE)
 ```

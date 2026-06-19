@@ -80,34 +80,33 @@ grazing_change_shoots |>
   mutate(total_change = change_zostera + change_halodule) |>
   group_by(treatment) |>
   summarise(total = mean(total_change, na.rm = T),
+            se_total = sd(total_change, na.rm = T) / sqrt(n()),
             .groups = "drop") |>
-  left_join(
-    grazing_change_shoots |>
-      pivot_longer(cols = c(change_zostera, change_halodule),
-                   names_to = "species", values_to = "change") |>
-      mutate(species = ifelse(species == "change_zostera", "zostera", "halodule")) |>
-      group_by(treatment, species) |>
-      summarise(mean = mean(change, na.rm = T),
-                se   = sd(change, na.rm = T) / sqrt(n()),
-                .groups = "drop"),
-    by = "treatment"
-  ) |>
-  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+  mutate(label = c("", "", "**", "***")) -> totals_change
+
+grazing_change_shoots |>
+  mutate(total_change = change_zostera + change_halodule) |>
+  pivot_longer(cols = c(change_zostera, change_halodule),
+               names_to = "species", values_to = "change") |>
+  mutate(species = ifelse(species == "change_zostera", "zostera", "halodule")) |>
+  group_by(treatment, species) |>
+  summarise(mean = mean(change, na.rm = T),
+            se   = sd(change, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  left_join(totals_change, by = "treatment") |>
+ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
   geom_col(color = "black", width = 0.6) +
   geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
   geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_text(data = totals_change,
+            aes(x = factor(treatment), y = total + se_total + 5, label = label),
+            size = 6, inherit.aes = FALSE) +
   labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
   scale_fill_manual(values = c(
     halodule = "#006600",
-    zostera = "#9ACD23"
+    zostera  = "#9ACD23"
   )) +
   theme_classic()
-```
-
-```{r}
-grazing_change_shoots |>
-  mutate(total_change = change_zostera + change_halodule) |>
-  arrange(treatment, total_change)
 ```
 
 ```{r}
@@ -186,23 +185,32 @@ june10 |>
 june10 |>
   mutate(total_shoots = z_shoot_density + h_shoot_density) |>
   group_by(treatment) |>
-  summarise(total = mean(total_shoots, na.rm = T), .groups = "drop") |>
-  mutate(label = c("", "", "**", "***")) |>
-  left_join(
-    june10 |>
-      pivot_longer(cols = c(z_shoot_density, h_shoot_density),
-                   names_to = "species", values_to = "shoot_density") |>
-      mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
-      group_by(treatment, species) |>
-      summarise(mean = mean(shoot_density, na.rm = T),
-                se   = sd(shoot_density, na.rm = T) / sqrt(n()),
-                .groups = "drop"),
-    by = "treatment"
-  ) |>
-  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+  summarise(total = mean(total_shoots, na.rm = T),
+            se_total = sd(total_shoots, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  mutate(label = c("", "", "**", "***")) -> totals
+
+june10 |>
+  pivot_longer(cols = c(z_shoot_density, h_shoot_density),
+               names_to = "species", values_to = "shoot_density") |>
+  mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
+  group_by(treatment, species) |>
+  summarise(mean = mean(shoot_density, na.rm = T),
+            .groups = "drop") |>
+  group_by(treatment) |>
+  arrange(treatment, species) |>
+  mutate(cumulative_mean = cumsum(mean)) |>
+  left_join(totals, by = "treatment") |>
+ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
   geom_col(color = "black", width = 0.6) +
-  geom_text(aes(y = total + 5, label = label), size = 6) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_errorbar(data = totals,
+                aes(x = factor(treatment), y = total,
+                    ymin = total - se_total,
+                    ymax = total + se_total),
+                inherit.aes = FALSE, width = 0.2) +
+  geom_text(data = totals,
+            aes(x = factor(treatment), y = total + 10, label = label),
+            size = 6, inherit.aes = FALSE) +
   labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
   scale_fill_manual(values = c(
     halodule = "#006600",
