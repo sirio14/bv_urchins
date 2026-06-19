@@ -81,26 +81,27 @@ grazing_change_shoots |>
   group_by(treatment) |>
   summarise(total = mean(total_change, na.rm = T),
             .groups = "drop") |>
-  mutate(label = c("", "", "**", "***")) |>
   left_join(
     grazing_change_shoots |>
       pivot_longer(cols = c(change_zostera, change_halodule),
                    names_to = "species", values_to = "change") |>
       mutate(species = ifelse(species == "change_zostera", "zostera", "halodule")) |>
       group_by(treatment, species) |>
-      summarise(mean = mean(change, na.rm = T), .groups = "drop"),
+      summarise(mean = mean(change, na.rm = T),
+                se   = sd(change, na.rm = T) / sqrt(n()),
+                .groups = "drop"),
     by = "treatment"
   ) |>
   ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
-    geom_col(color = "black", width = 0.6) +
-    geom_text(aes(y = total + 5, label = label), size = 6) +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
+  geom_col(color = "black", width = 0.6) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(x = "Number of urchins", y = "Change in shoot density", fill = "Species") +
   scale_fill_manual(values = c(
     halodule = "#006600",
     zostera = "#9ACD23"
-    )) + 
-    theme_classic()
+  )) +
+  theme_classic()
 ```
 
 ```{r}
@@ -193,25 +194,62 @@ june10 |>
                    names_to = "species", values_to = "shoot_density") |>
       mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
       group_by(treatment, species) |>
-      summarise(mean = mean(shoot_density, na.rm = T), .groups = "drop"),
+      summarise(mean = mean(shoot_density, na.rm = T),
+                se   = sd(shoot_density, na.rm = T) / sqrt(n()),
+                .groups = "drop"),
     by = "treatment"
   ) |>
   ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
-    geom_col(color = "black", width = 0.6) +
-    geom_text(aes(y = total + 5, label = label), size = 6) +
-    labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
+  geom_col(color = "black", width = 0.6) +
+  geom_text(aes(y = total + 5, label = label), size = 6) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
   scale_fill_manual(values = c(
     halodule = "#006600",
     zostera = "#9ACD23"
-    )) + 
-    theme_classic()
-
+  )) +
+  theme_classic()
 ```
 
 ```{r}
+# creating table for p values of june 10 tukey p values
 data.frame(
   comparison = c("1 vs 0", "2 vs 0", "4 vs 0", "2 vs 1", "4 vs 1", "4 vs 2"),
   p_value    = c(0.4369, 0.0006, 0.00005, 0.0264, 0.0031, 0.9183),
   sig        = c("ns", "**", "***", "*", "**", "ns")
 )
+```
+
+```{r}
+may29 <- grazing_data |>
+  mutate(date = as.Date(date, format = "%d%B%Y")) |>
+  filter(date == as.Date("2026-05-29"))
+
+summary(aov(z_shoot_density ~ factor(treatment), data = may29))
+summary(aov(h_shoot_density ~ factor(treatment), data = may29))
+```
+
+```{r}
+may29 |>
+  mutate(total_shoots = z_shoot_density + h_shoot_density) |>
+  group_by(treatment) |>
+  summarise(total_mean = mean(total_shoots, na.rm = T),
+            total_se   = sd(total_shoots, na.rm = T) / sqrt(n()),
+            .groups = "drop") |>
+  left_join(
+    may29 |>
+      pivot_longer(cols = c(z_shoot_density, h_shoot_density),
+                   names_to = "species", values_to = "shoot_density") |>
+      mutate(species = ifelse(species == "z_shoot_density", "zostera", "halodule")) |>
+      group_by(treatment, species) |>
+      summarise(mean = mean(shoot_density, na.rm = T), .groups = "drop"),
+    by = "treatment"
+  ) |>
+  ggplot(aes(x = factor(treatment), y = mean, fill = species)) +
+  geom_col(color = "black", width = 0.6) +
+  geom_errorbar(aes(ymin = total_mean - total_se, ymax = total_mean + total_se),
+                width = 0.2) +
+  labs(x = "Number of urchins", y = "Shoot density", fill = "Species") +
+  scale_fill_manual(values = c(halodule = "#006600", zostera = "#9ACD23")) +
+  theme_classic()
 ```
