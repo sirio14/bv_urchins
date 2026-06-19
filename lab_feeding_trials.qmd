@@ -124,6 +124,7 @@ choice_data |>
 
 ```{r}
 choice_data |>
+  filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
   mutate(total = a_amount_eaten + b_amount_eaten,
          a_pct = 100 * a_amount_eaten / total,
          b_pct = 100 * b_amount_eaten / total) |>
@@ -165,28 +166,5 @@ choice_data |>
   ))
 ```
 
-```{r}
-choice_data |>
-  filter(a_amount_eaten >= 0, b_amount_eaten >= 0) |>
-  mutate(difference = a_amount_eaten - b_amount_eaten) |>
-  pivot_longer(cols = c(a_pct, b_pct),
-               names_to = "species_slot",
-               values_to = "difference") |>
-  mutate(species = ifelse(species_slot == "difference", choice_a, choice_b)) |>
-  group_by(pair, species) |>
-  summarise(mean = mean(difference, na.rm = T),
-            se   = sd(difference, na.rm = T) / sqrt(n()),
-            .groups = "drop") |>
-  ggplot(aes(x = species, y = mean, fill = species)) +
-  geom_col(color = "black", width = 0.6) +
-  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
-  facet_wrap(~ pair, scales = "free_x") +
-  labs(y = "Percent eaten (%)", x = NULL) +
-  scale_fill_manual(values = c(
-    detrital = "#354230",
-    halodule = "#006600",
-    zostera = "#9ACD23"
-  )) +
-  theme_classic() +
-  theme(panel.spacing = unit(2, "lines"))
+```{}
 ```
