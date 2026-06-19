@@ -6,7 +6,11 @@ editor: visual
 
 ## Lab Feeding Trials
 
+no_choice \<-
+
 ```{r}
+#| label: installing-packages
+
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
